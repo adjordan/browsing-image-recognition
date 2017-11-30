@@ -2,7 +2,6 @@ import os
 import praw
 import urllib.request
 
-
 # Authentication so we can access reddit
 def authenticate():
     print("Authenticating...")
@@ -10,25 +9,37 @@ def authenticate():
     print("Authenticated as {}".format(user_agent.user.me()))
     return user_agent
 
+# Deletes all files in the 'img' directory
+def clear_img_dir():
+    rmtree('./img')
+    os.makedirs('img')
 
-def download_images(dictionary):
-    values = dictionary.values()
-    keys = dictionary.keys()
+# Tries to save a single image given a URL, subreddit, and file number
+def save_image(url, subreddit, file_number):
+    try:
+        urlretrieve(url, 'img/r_{}/{}.jpg'.format(subreddit, file_number))
+    except:
+        pass
 
-    # Index through all keys (each key is a subreddit)
-    for i in range(0, len(keys)):
-        urls = values[i]
-
-        # Create directory to save images if it doesn't exist
-        save_dir = "r_" + keys[i]
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
-
-        # Index through all images for the subreddit and save
-        for j in range(0, len(urls)):
-            url = urls[j]
-            urllib.request.urlretrieve(url, save_dir + "/image_" + j)
-
+# Downloads the top N images from a subreddit
+def download_images(subreddit, limit):
+    os.makedirs('img/r_{}'.format(subreddit), exist_ok=True)
+    for i, post in enumerate(subreddit.top(limit=limit)):
+        url = post.url
+        # Check to see if URL is already in image file format
+        if re.match('.*\.(?:jpeg|jpg|png|bmp|tiff|gif)$', url):
+            save_image(url, subreddit, i)
+        # Adjust imgur URL format to point to the image file, skipping albums
+        elif 'imgur' in post.domain:
+            parsed = list(urlparse(url))
+            if re.match('/a/.*', parsed[2]): # skip albums
+                continue
+            if parsed[1] != 'i.imgur.com': # use image hosting domain
+                parsed[1] = 'i.imgur.com'
+            if not re.match('.*\.(?:jpeg|jpg|png|bmp|tiff|gif)$', parsed[2]): # add jpg file extension
+                parsed[2] += '.jpg'
+                url = urlunparse(parsed)
+            save_image(url, subreddit, i+1)
 
 def scrape():
     user_agent = authenticate()
@@ -53,7 +64,6 @@ def scrape():
             out_dict[s].append(submission.url)
 
     return out_dict
-
 
 if __name__ == '__main__':
     scrape()
