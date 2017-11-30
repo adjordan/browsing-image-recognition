@@ -1,6 +1,9 @@
 import os
 import praw
-import urllib.request
+import re
+from urllib.request import urlretrieve
+from urllib.parse import urlparse, urlunparse
+from shutil import rmtree
 
 # Authentication so we can access reddit
 def authenticate():
