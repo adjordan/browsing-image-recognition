@@ -37,14 +37,12 @@ def download_images(subreddit, limit):
             parsed = list(urlparse(url))
             if re.match('/a/.*', parsed[2]): # skip albums
                 continue
-            if parsed[1] != 'i.imgur.com': # use image hosting domain
-                parsed[1] = 'i.imgur.com'
-            if not re.match('.*\.(?:jpeg|jpg|png|bmp|tiff|gif)$', parsed[2]): # add jpg file extension
-                parsed[2] += '.jpg'
-                url = urlunparse(parsed)
+            parsed[1] = 'i.imgur.com' # force domain to i.imgur.com
+            parsed[2] += '.jpg' # add jpg file extension
+            url = urlunparse(parsed)
             save_image(url, subreddit, i+1)
 
-def scrape():
+def scrape_all():
     user_agent = authenticate()
 
     temp = open("subreddits.txt", "r")
@@ -69,4 +67,4 @@ def scrape():
     return out_dict
 
 if __name__ == '__main__':
-    scrape()
+    scrape_all()
