@@ -15,6 +15,13 @@ def get_key():
     with open('.key', 'r') as f:
         return f.read()
 
+def stream_to_string(bytestr, key, subreddit, file_number):
+    im_str = base64.b64encode(bytestr).decode()
+
+    # Add key to string and save as text
+    with open('img/r_{}/{}.enc'.format(subreddit, file_number), 'wb') as f:
+        f.write((key + im_str).encode())
+
 def to_string(filename, key):
     name = os.path.splitext(filename)[0]
 
