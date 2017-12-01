@@ -2,7 +2,7 @@ import os
 import praw
 import re
 import obfuscate
-from urllib.request import urlopen
+from urllib.request import urlopen, urlretrieve
 from urllib.parse import urlparse, urlunparse
 from shutil import rmtree
 
@@ -19,15 +19,18 @@ def clear_img_dir():
     os.makedirs('img')
 
 # Tries to save a single image given a URL, subreddit, and file number
-def save_image(url, key, subreddit, file_number):
+def save_image(url, key, subreddit, file_number, hide=True):
     try:
-        response = urlopen(url)
-        obfuscate.stream_to_string(response.read(), key, subreddit, file_number)
+        if hide:
+            response = urlopen(url)
+            obfuscate.stream_to_string(response.read(), key, subreddit, file_number)
+        else:
+            urlretrieve(url, 'img/r_{}/{}.jpg'.format(subreddit, file_number))
     except:
         pass
 
 # Downloads the top N images from a subreddit
-def download_images(subreddit, limit):
+def download_images(subreddit, limit, hide=True):
     if not os.path.isfile('.key'):
         obfuscate.gen_key()
     key = obfuscate.get_key()
@@ -36,7 +39,7 @@ def download_images(subreddit, limit):
         url = post.url
         # Check to see if URL is already in image file format
         if re.match('.*\.(?:jpeg|jpg|png|bmp|tiff|gif)$', url):
-            save_image(url, key, subreddit, i)
+            save_image(url, key, subreddit, i+1, hide)
         # Adjust imgur URL format to point to the image file, skipping albums
         elif 'imgur' in post.domain:
             parsed = list(urlparse(url))
@@ -45,7 +48,7 @@ def download_images(subreddit, limit):
             parsed[1] = 'i.imgur.com' # force domain to i.imgur.com
             parsed[2] += '.jpg' # add jpg file extension
             url = urlunparse(parsed)
-            save_image(url, key, subreddit, i+1)
+            save_image(url, key, subreddit, i+1, hide)
 
 def scrape_all():
     user_agent = authenticate()
