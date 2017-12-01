@@ -5,6 +5,10 @@ from urllib.request import urlretrieve
 from urllib.parse import urlparse, urlunparse
 from shutil import rmtree
 
+from PIL import Image
+import urllib.request
+import cv2
+
 
 # Authentication so we can access reddit
 def authenticate():
@@ -21,10 +25,23 @@ def clear_img_dir():
 
 
 # Tries to save a single image given a URL, subreddit, and file number
+# def save_image(url, subreddit, file_number):
+#     try:
+#         urlretrieve(url, 'img/r_{}/{}_image_{}.jpg'.format(subreddit, subreddit, file_number))
+#     except:
+#         pass
+
+
 def save_image(url, subreddit, file_number):
     try:
-        urlretrieve(url, 'img/r_{}/{}_image_{}.jpg'.format(subreddit, subreddit, file_number))
-    except:
+        with urllib.request.urlopen(url) as url:
+            with open('temp.jpg', 'wb') as f:
+                f.write(url.read())
+
+        img = Image.open('temp.jpg')
+        img_resize = img.resize((150,150), Image.ANTIALIAS)
+        img_resize.save('img/r_{}/{}_image_{}.jpg'.format(subreddit, subreddit, file_number))
+    except urllib.error.HTTPError as err:
         pass
 
 
