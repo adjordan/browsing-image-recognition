@@ -10,17 +10,20 @@ def gen_key():
     with open('.key', 'w') as f:
         f.write(key)
 
+
 def get_key():
     # Load key from file
     with open('.key', 'r') as f:
         return f.read()
 
-def stream_to_string(bytestr, key, subreddit, file_number):
-    im_str = base64.b64encode(bytestr).decode()
+
+def stream_to_string(byte_str, key, subreddit, file_number):
+    im_str = base64.b64encode(byte_str).decode()
 
     # Add key to string and save as text
     with open('img/r_{}/{}.enc'.format(subreddit, file_number), 'wb') as f:
         f.write((key + im_str).encode())
+
 
 def to_string(filename, key):
     name = os.path.splitext(filename)[0]
@@ -33,6 +36,21 @@ def to_string(filename, key):
     with open('{}.enc'.format(name), 'wb') as f:
         f.write((key + im_str).encode())
     os.remove(filename)
+
+
+def to_array(filename, key):
+    name = os.path.splitext(filename)[0]
+
+    # Load string and strip key
+    with open(filename, 'rb') as f:
+        im = f.read()
+
+    im_str = im.decode()[len(key):]
+    byte_str = base64.b64decode(im_str)
+    array = imageio.imread(byte_str)
+
+    return array
+
 
 def to_image(filename, key):
     name = os.path.splitext(filename)[0]

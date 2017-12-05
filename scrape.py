@@ -29,8 +29,11 @@ def save_image(url, key, subreddit, file_number, hide=True):
         return
     img = Image.open(io.BytesIO(response.read()))
     img_resize = img.resize((150,150), Image.ANTIALIAS)
+
     if hide:
-        obfuscate.stream_to_string(img_resize.tobytes(), key, subreddit, file_number)
+        byte_str = io.BytesIO()
+        img_resize.save(byte_str, format='JPEG')
+        obfuscate.stream_to_string(byte_str.getvalue(), key, subreddit, file_number)
     else:
         img_resize.save('img/r_{}/{}_{}.jpg'.format(subreddit, subreddit, file_number))
 
