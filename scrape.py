@@ -7,6 +7,7 @@ import csv
 import pandas as pd
 from urllib import request, parse, error
 from shutil import rmtree
+import imageio
 import io
 from PIL import Image
 
@@ -18,39 +19,23 @@ def authenticate():
     return user_agent
 
 
-# Deletes all files in the 'img' directory
-def clear_img_dir():
-    rmtree('./img')
-    os.makedirs('img')
-
-
-# Tries to save a single image given a URL, subreddit, and file number
-def save_image(url, key, image_id, hide=True):
-    try:
-        response = request.urlopen(url)
-    except error.HTTPError as err:
-        return
-    img = Image.open(io.BytesIO(response.read()))
-    img_resize = img.resize((150,150), Image.ANTIALIAS)
-
-    if hide:
-        byte_str = io.BytesIO()
-        img_resize.save(byte_str, format='JPEG')
-        obfuscate.stream_to_string(byte_str.getvalue(), key, image_id)
-    else:
-        img_resize.save('img/{}{}'.format(image_id, os.path.splitext(parse.urlparse(url)[2])[1]))
-
 def lookup_url(image_id, filename='urls.csv'):
     df = pd.read_csv(filename, index_col='image_id')
     url, subreddit, valid = df.loc[image_id, :]
     print('{} ({})'.format(url, subreddit))
 
 
-def download_images(filename='urls.csv', limit=100, hide=True, randomize=True):
-    if not os.path.isfile('.key'):
-        obfuscate.gen_key()
-    key = obfuscate.get_key()
+def to_array(url, fmt):
+    response = request.urlopen(url)
+    img = Image.open(io.BytesIO(response.read()))
+    img_resize = img.resize((150,150), Image.ANTIALIAS)
+    byte_str = io.BytesIO()
+    img_resize.save(byte_str, format=fmt)
+    array = imageio.imread(byte_str.getvalue())
+    return array
 
+
+def get_images(limit, filename='urls.csv', randomize=True):
     # Read data from file and sample rows randomly
     if randomize:
         seed = None
@@ -59,12 +44,18 @@ def download_images(filename='urls.csv', limit=100, hide=True, randomize=True):
     df = pd.read_csv(filename, index_col='image_id')
     df = df.sample(limit, random_state=seed)
 
-    # Attempt to download all images
-    for image_id, (url, _, _) in df.iterrows():
+    for (image_id, url) in df['url'].iteritems():
         try:
-            save_image(url, key, image_id, hide)
-        except:
-            pass
+            array = to_array(url, 'JPEG')
+        except error.HTTPError as err:
+            print('Unable to read image {} (HTTP Error).'.format(image_id))
+            continue
+        except OSError as err:
+            try:
+                array = to_array(url, 'PNG')
+            except OSError:
+                print('Unable to read image {} (Unknown).'.format(image_id))
+        yield array
 
 
 def validate_urls(filename='urls.csv'):
@@ -106,7 +97,6 @@ def validate_urls(filename='urls.csv'):
 
 
 def scrape_all(min_score, filename='urls.csv'):
-
     user_agent = authenticate()
 
     # Get subreddits from file
@@ -131,7 +121,7 @@ def scrape_all(min_score, filename='urls.csv'):
                 urls.append([submission.url, s])
     print('Done!')
 
-    df = pd.DataFrame(urls, columns=['subreddit', 'url'])
+    df = pd.DataFrame(urls, columns=['url', 'subreddit'])
     df.index.name = 'image_id'
     df.to_csv(filename)
 
