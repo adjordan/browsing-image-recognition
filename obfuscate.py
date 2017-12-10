@@ -17,11 +17,11 @@ def get_key():
         return f.read()
 
 
-def stream_to_string(byte_str, key, subreddit, file_number):
+def stream_to_string(byte_str, key, image_id):
     im_str = base64.b64encode(byte_str).decode()
 
     # Add key to string and save as text
-    with open('img/r_{}/{}.enc'.format(subreddit, file_number), 'wb') as f:
+    with open('img/{}.enc'.format(image_id), 'wb') as f:
         f.write((key + im_str).encode())
 
 
