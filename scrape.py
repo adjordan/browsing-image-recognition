@@ -26,7 +26,7 @@ def lookup_url(image_id, filename='urls.csv'):
 
 
 def to_array(url, fmt):
-    response = request.urlopen(url)
+    response = request.urlopen(url, timeout=5)
     img = Image.open(io.BytesIO(response.read()))
     img_resize = img.resize((150,150), Image.ANTIALIAS)
     byte_str = io.BytesIO()
@@ -35,14 +35,17 @@ def to_array(url, fmt):
     return array
 
 
-def get_images(limit, filename='urls.csv', randomize=True):
+def get_images(limit=None, filename='urls.csv', randomize=True):
     # Read data from file and sample rows randomly
     if randomize:
         seed = None
     else:
         seed = 1
     df = pd.read_csv(filename, index_col='image_id')
-    df = df.sample(limit, random_state=seed)
+    if limit:
+        df = df.sample(limit, random_state=seed)
+    else:
+        df = df.sample(len(df), random_state=seed)
 
     for (image_id, url) in df['url'].iteritems():
         try:
