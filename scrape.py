@@ -5,11 +5,14 @@ import obfuscate
 import requests
 import csv
 import pandas as pd
-from urllib import request, parse, error
+#from urllib import request, parse, error
 from shutil import rmtree
 import imageio
 import io
 from PIL import Image
+import requests
+from io import BytesIO
+import numpy as np
 
 # Authentication so we can access reddit
 def authenticate():
@@ -29,16 +32,22 @@ def to_array(url, fmt):
     response = None
     while response is None:
         try:
-            response = request.urlopen(url, timeout=5)
-        except TimeoutError:
+            response = requests.get(url, timeout=3)
+        except requests.exceptions.Timeout:
             pass
 
-    img = Image.open(io.BytesIO(response.read()))
+    img = Image.open(BytesIO(response.content))
     img_resize = img.resize((150, 150), Image.ANTIALIAS)
-    byte_str = io.BytesIO()
-    img_resize.save(byte_str, format=fmt)
-    array = imageio.imread(byte_str.getvalue())
-    return array
+    img_mat = np.array(img_resize)
+
+    return img_mat
+
+    # img = Image.open(io.BytesIO(response.read()))
+    # img_resize = img.resize((150, 150), Image.ANTIALIAS)
+    # byte_str = io.BytesIO()
+    # img_resize.save(byte_str, format=fmt)
+    # array = imageio.imread(byte_str.getvalue())
+    # return array
 
 
 def get_images(limit=None, filename='urls.csv', randomize=True):
@@ -57,14 +66,10 @@ def get_images(limit=None, filename='urls.csv', randomize=True):
     for (image_id, (url, label)) in df[['url', 'label']].iterrows():
         try:
             array = to_array(url, 'JPEG')
-        except error.HTTPError as err:
-            print('Unable to read image {}, {} (HTTP Error).'.format(image_id, url))
+        except Exception as e:
+            print(e)
+            print('Unable to read image {}, {}.'.format(image_id, url))
             continue
-        except OSError as err:
-            try:
-                array = to_array(url, 'PNG')
-            except OSError:
-                print('Unable to read image {}, {} (Unknown).'.format(image_id,url))
         yield (array, label)
 
 
