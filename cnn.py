@@ -1,10 +1,8 @@
-import scipy as sp
 import numpy as np
 import csv
 import math
-import os
 from keras.layers import Dense
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.applications.inception_v3 import InceptionV3
 
 from PIL import Image
@@ -12,6 +10,7 @@ import requests
 from io import BytesIO
 import time
 import random
+
 
 random.seed(1)
 
@@ -41,7 +40,7 @@ def initialize_model():
                   optimizer='adam',
                   metrics=['accuracy'])
 
-    return model
+    model.save('cnn_model_test.h5')
 
 
 def balance_data():
@@ -62,18 +61,24 @@ def balance_data():
                 count0 += 1
                 miss_rows.append(row)
 
-    miss_rows = random.sample(miss_rows, count1)
+    hit_rows = random.sample(hit_rows, 15000)
+    miss_rows = random.sample(miss_rows, 15000)
 
     all_data = miss_rows + hit_rows
 
     random.shuffle(all_data)
 
-    return all_data
+    with open('shuffled.csv', 'w') as writefile:
+        writer = csv.writer(writefile)
+        for row in all_data:
+            writer.writerow(row)
 
 
-def train_batch(model, data):
+def train_batch():
     start_time = time.time()
     batch_size = 32
+
+    model = load_model('cnn_model_test.h5')
 
     # First row
     x_batch = []
@@ -82,33 +87,42 @@ def train_batch(model, data):
 
     print("Begin!")
 
-    for i in range(len(data)):
-        row = data[i]
-        try:
-            img_mat = url2image(row[1])
-            if img_mat.ndim != 3:
+    with open('shuffled.csv') as csv_file:
+        images_csv = csv.reader(csv_file)
+        for row in images_csv:
+            try:
+                img_mat = url2image(row[1])
+                if img_mat.ndim != 3:
+                    continue
+            except:
                 continue
-        except:
-            continue
 
-        x_batch.append(img_mat)
-        y_batch.append(row[3])
+            x_batch.append(img_mat)
+            y_batch.append(row[3])
 
-        if len(y_batch) == 32:
-            x_train = np.stack(x_batch, axis=0)
-            y_train = np.asarray(y_batch)
-            model.train_on_batch(x_train, y_train)
-            x_batch = []
-            y_batch = []
-            batch_count += 1
-            print("Finished Batch " + str(batch_count) + " at " + time.strftime('%l:%M%p on %b %d, %Y'))
+            if len(y_batch) == 32:
+                x_train = np.stack(x_batch, axis=0)
+                y_train = np.asarray(y_batch)
+
+                # Load and train
+                model.train_on_batch(x_train, y_train)
+                model.save('cnn_model_test.h5')
+                x_batch = []
+                y_batch = []
+                batch_count += 1
+                print("Finished Batch " + str(batch_count) + " of " + str(math.ceil(30000/32)) +
+                      " at " + time.strftime('%l:%M%p on %b %d, %Y'))
 
     print("Training took %s seconds." % (time.time() - start_time))
-    return model
 
 
 def url2image(url):
-    response = requests.get(url)
+    response = None
+    while response is None:
+        try:
+            response = requests.get(url, timeout=1)
+        except:
+            pass
     img = Image.open(BytesIO(response.content))
     img_resize = img.resize((150, 150), Image.ANTIALIAS)
     img_mat = np.array(img_resize)
@@ -117,17 +131,5 @@ def url2image(url):
 
 
 if __name__ == "__main__":
-    # Create model
-    model = initialize_model()
-
-    # Get data
-    x_train,  y_train = balance_data()
-
-    # Train model
-    model = train_batch(model, x_train, y_train)
-
-    # # Evaluate model
-    # loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128)
-
-    # Save model
-    model.save('cnn_model.h5')
+    initialize_model()
+    train_batch()
