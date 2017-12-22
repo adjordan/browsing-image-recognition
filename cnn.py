@@ -10,6 +10,7 @@ import requests
 from io import BytesIO
 import time
 import random
+import scrape
 
 
 random.seed(1)
@@ -87,47 +88,41 @@ def train_batch():
 
     print("Begin!")
 
-    with open('shuffled.csv') as csv_file:
-        images_csv = csv.reader(csv_file)
-        for row in images_csv:
-            try:
-                img_mat = url2image(row[1])
-                if img_mat.ndim != 3:
-                    continue
-            except:
-                continue
+    for img_mat in scrape.get_images(filename='shuffled.csv', randomize=false):
+        if img_mat.shape != (150, 150, 3):
+            continue
 
-            x_batch.append(img_mat)
-            y_batch.append(row[3])
+        x_batch.append(img_mat)
+        y_batch.append(row[3])
 
-            if len(y_batch) == 32:
-                x_train = np.stack(x_batch, axis=0)
-                y_train = np.asarray(y_batch)
+        if len(y_batch) == batch_size:
+            x_train = np.stack(x_batch, axis=0)
+            y_train = np.asarray(y_batch)
 
-                # Load and train
-                model.train_on_batch(x_train, y_train)
-                model.save('cnn_model_test.h5')
-                x_batch = []
-                y_batch = []
-                batch_count += 1
-                print("Finished Batch " + str(batch_count) + " of " + str(math.ceil(30000/32)) +
-                      " at " + time.strftime('%l:%M%p on %b %d, %Y'))
+            # Load and train
+            model.train_on_batch(x_train, y_train)
+            model.save('cnn_model_test.h5')
+            x_batch = []
+            y_batch = []
+            batch_count += 1
+            print("Finished Batch " + str(batch_count) + " of " + str(math.ceil(30000/32)) +
+                  " at " + time.strftime('%l:%M%p on %b %d, %Y'))
 
     print("Training took %s seconds." % (time.time() - start_time))
 
-
-def url2image(url):
-    response = None
-    while response is None:
-        try:
-            response = requests.get(url, timeout=1)
-        except:
-            pass
-    img = Image.open(BytesIO(response.content))
-    img_resize = img.resize((150, 150), Image.ANTIALIAS)
-    img_mat = np.array(img_resize)
-
-    return img_mat
+#
+# def url2image(url):
+#     response = None
+#     while response is None:
+#         try:
+#             response = requests.get(url, timeout=1)
+#         except:
+#             pass
+#     img = Image.open(BytesIO(response.content))
+#     img_resize = img.resize((150, 150), Image.ANTIALIAS)
+#     img_mat = np.array(img_resize)
+#
+#     return img_mat
 
 
 if __name__ == "__main__":
