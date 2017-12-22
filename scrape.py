@@ -42,12 +42,13 @@ def get_images(limit=None, filename='urls.csv', randomize=True):
     else:
         seed = 1
     df = pd.read_csv(filename, index_col='image_id')
+
     if limit:
         df = df.sample(limit, random_state=seed)
     else:
         df = df.sample(len(df), random_state=seed)
 
-    for (image_id, url) in df['url'].iteritems():
+    for (image_id, (url, label)) in df[['url', 'label']].iterrows():
         try:
             array = to_array(url, 'JPEG')
         except error.HTTPError as err:
@@ -58,7 +59,7 @@ def get_images(limit=None, filename='urls.csv', randomize=True):
                 array = to_array(url, 'PNG')
             except OSError:
                 print('Unable to read image {} (Unknown).'.format(image_id))
-        yield array
+        yield (array, label)
 
 
 def validate_urls(filename='urls.csv'):
@@ -68,7 +69,7 @@ def validate_urls(filename='urls.csv'):
     valid_formats = ['jpeg', 'jpg', 'png', 'bmp', 'tiff']
     df = pd.read_csv(filename, index_col='image_id')
     df['valid'] = False
-    for image_id, (url, subreddit, _) in df.iterrows():
+    for image_id, (url, subreddit, _, _) in df.iterrows():
         parsed = list(parse.urlparse(url))
 
         # Check for a file extension
@@ -125,6 +126,7 @@ def scrape_all(min_score, filename='urls.csv'):
     print('Done!')
 
     df = pd.DataFrame(urls, columns=['url', 'subreddit'])
+    df['label'] = 1
     df.index.name = 'image_id'
     df.to_csv(filename)
 
