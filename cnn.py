@@ -11,6 +11,7 @@ from io import BytesIO
 import time
 import random
 
+
 random.seed(1)
 
 hit_labels = ["/m/012c9l", "/m/0172jz", "/m/017fsk",
@@ -116,7 +117,12 @@ def train_batch():
 
 
 def url2image(url):
-    response = requests.get(url)
+    response = None
+    while response is None:
+        try:
+            response = requests.get(url, timeout=1)
+        except:
+            pass
     img = Image.open(BytesIO(response.content))
     img_resize = img.resize((150, 150), Image.ANTIALIAS)
     img_mat = np.array(img_resize)
