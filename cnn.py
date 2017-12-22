@@ -25,6 +25,7 @@ hit_labels = ["/m/012c9l", "/m/0172jz", "/m/017fsk",
 train_path = "/home/austin/Github/browsing-image-recognition/OpenImages/compiled-images/train/compiled-with-class.csv"
 val_path = "/home/austin/Github/browsing-image-recognition/OpenImages/compiled-images/validate/compiled.csv"
 test_path = "/home/austin/Github/browsing-image-recognition/OpenImages/compiled-images/test/compiled.csv"
+model_path = "/home/austin/Github/browsing-image-recognition/cnn_model.h5"
 
 
 def initialize_model():
@@ -41,10 +42,10 @@ def initialize_model():
                   optimizer='adam',
                   metrics=['accuracy'])
 
-    model.save('cnn_model_test.h5')
+    model.save(model_path)
 
 
-def balance_data():
+def create_dataset():
     count0 = 0
     count1 = 0
 
@@ -62,8 +63,9 @@ def balance_data():
                 count0 += 1
                 miss_rows.append(row)
 
-    hit_rows = random.sample(hit_rows, 15000)
-    miss_rows = random.sample(miss_rows, 15000)
+    num_samples_per_class = count1
+    hit_rows = random.sample(hit_rows, num_samples_per_class)
+    miss_rows = random.sample(miss_rows, num_samples_per_class)
 
     all_data = miss_rows + hit_rows
 
@@ -71,29 +73,33 @@ def balance_data():
 
     with open('shuffled.csv', 'w') as writefile:
         writer = csv.writer(writefile)
+        writer.writerow(['image_id', 'url', 'tags', 'label'])
         for row in all_data:
             writer.writerow(row)
 
+    return num_samples_per_class * 2
 
-def train_batch():
-    start_time = time.time()
+
+def train_batch(num_samples):
     batch_size = 32
-
-    model = load_model('cnn_model_test.h5')
+    model = load_model(model_path)
 
     # First row
     x_batch = []
     y_batch = []
     batch_count = 0
 
+    start_time = time.time()
     print("Begin!")
 
-    for img_mat in scrape.get_images(filename='shuffled.csv', randomize=false):
+    for img in scrape.get_images(filename='shuffled.csv', randomize=False):
+        img_mat = img[0]
+        label = img[1]
         if img_mat.shape != (150, 150, 3):
             continue
 
         x_batch.append(img_mat)
-        y_batch.append(row[3])
+        y_batch.append(label)
 
         if len(y_batch) == batch_size:
             x_train = np.stack(x_batch, axis=0)
@@ -101,16 +107,26 @@ def train_batch():
 
             # Load and train
             model.train_on_batch(x_train, y_train)
-            model.save('cnn_model_test.h5')
+            model.save(model_path)
             x_batch = []
             y_batch = []
             batch_count += 1
-            print("Finished Batch " + str(batch_count) + " of " + str(math.ceil(30000/32)) +
-                  " at " + time.strftime('%l:%M%p on %b %d, %Y'))
+
+            # print statements
+            num_batches = math.ceil(num_samples / batch_size)
+            avg_batch_time = (time.time() - start_time) / batch_count
+            print("Finished Batch " + str(batch_count) + " of " + str(num_batches) +
+                  " at " + time.strftime('%l:%M%p on %b %d, %Y') + ".")
+
+            m, s = divmod(avg_batch_time * (num_batches - batch_count), 60)
+            h, m = divmod(m, 60)
+            h, m, s = int(h), int(m), round(s)
+            print("Estimated time remaining: {:02d}h{:02d}m{:02d}s".format(h, m, s))
+            print("\n")
 
     print("Training took %s seconds." % (time.time() - start_time))
 
-#
+
 # def url2image(url):
 #     response = None
 #     while response is None:
@@ -127,4 +143,5 @@ def train_batch():
 
 if __name__ == "__main__":
     initialize_model()
-    train_batch()
+    num_samples = create_dataset()
+    train_batch(num_samples)

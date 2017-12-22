@@ -26,9 +26,15 @@ def lookup_url(image_id, filename='urls.csv'):
 
 
 def to_array(url, fmt):
-    response = request.urlopen(url, timeout=5)
+    response = None
+    while response is None:
+        try:
+            response = request.urlopen(url, timeout=5)
+        except TimeoutError:
+            pass
+
     img = Image.open(io.BytesIO(response.read()))
-    img_resize = img.resize((150,150), Image.ANTIALIAS)
+    img_resize = img.resize((150, 150), Image.ANTIALIAS)
     byte_str = io.BytesIO()
     img_resize.save(byte_str, format=fmt)
     array = imageio.imread(byte_str.getvalue())
@@ -52,13 +58,13 @@ def get_images(limit=None, filename='urls.csv', randomize=True):
         try:
             array = to_array(url, 'JPEG')
         except error.HTTPError as err:
-            print('Unable to read image {} (HTTP Error).'.format(image_id))
+            print('Unable to read image {}, {} (HTTP Error).'.format(image_id, url))
             continue
         except OSError as err:
             try:
                 array = to_array(url, 'PNG')
             except OSError:
-                print('Unable to read image {} (Unknown).'.format(image_id))
+                print('Unable to read image {}, {} (Unknown).'.format(image_id,url))
         yield (array, label)
 
 
