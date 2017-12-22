@@ -28,6 +28,7 @@ def lookup_url(image_id, filename='urls.csv'):
     print('{} ({})'.format(url, subreddit))
 
 
+# Might return none
 def to_array(url, fmt):
     response = None
     while response is None:
@@ -36,11 +37,23 @@ def to_array(url, fmt):
         except requests.exceptions.Timeout:
             pass
 
-    img = Image.open(BytesIO(response.content))
-    img_resize = img.resize((150, 150), Image.ANTIALIAS)
-    img_mat = np.array(img_resize)
+    out_mat = None
+    if response.status_code == 200:
+        try:
+            img = Image.open(BytesIO(response.content))
+            img_resize = img.resize((150, 150), Image.ANTIALIAS)
+            img_mat = np.array(img_resize)
+            if img_mat == np.zeros((150, 150, 3)):
+                img_mat = None
 
-    return img_mat
+            out_mat = img_mat
+
+        except OSError as err:
+            print("Problem with image at " + url + " ...")
+            print(err)
+
+
+    return out_mat
 
     # img = Image.open(io.BytesIO(response.read()))
     # img_resize = img.resize((150, 150), Image.ANTIALIAS)

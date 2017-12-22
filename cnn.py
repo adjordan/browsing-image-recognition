@@ -95,7 +95,7 @@ def train_batch(num_samples):
     for img in scrape.get_images(filename='shuffled.csv', randomize=False):
         img_mat = img[0]
         label = img[1]
-        if img_mat.shape != (150, 150, 3):
+        if img_mat is None or img_mat.shape != (150, 150, 3):
             continue
 
         x_batch.append(img_mat)
