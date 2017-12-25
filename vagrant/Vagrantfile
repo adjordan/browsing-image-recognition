@@ -1,0 +1,54 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Do not change this!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  
+  # Specify the Vagrant box that will be used
+  config.vm.box = "v0rtex/xenial64"
+  
+  # 
+  config.vm.provider "virtualbox" do |vb|
+    # Display the VirtualBox GUI when booting the machine
+    vb.gui = true
+    # Customize the amount of memory on the VM:
+    vb.memory = "1024"
+	vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/vagrant", "1"]
+  end
+  
+  # Install relevant packages
+  config.vm.provision "shell", inline: <<-SHELL
+    apt-get update
+	
+	# Install GUI and VirtualBox guest additions
+	apt-get install -y ubuntu-desktop virtualbox-guest-dkms virtualbox-guest-utils virtualbox-guest-x11
+	
+	# Get Python 3.6
+	apt-get install software-properties-common
+	apt-add-repository ppa:deadsnakes/ppa
+	apt-get update
+	apt-get install python3.6
+	
+	# pip3
+	apt-get install python3-pip
+	
+	pip3 install django
+	pip3 install djangorestframework
+	pip3 install tensorflow
+	pip3 install keras
+	
+	# https://httpie.org/
+	apt-get install httpie
+	
+	# Other
+	pip3 install scipy numpy matplotlib ipython jupyter 
+	
+  mkdir /synced
+  SHELL
+  
+  config.vm.synced_folder "~/GitHub/cardioflux-webapp", "/synced"
+
+  
+end
